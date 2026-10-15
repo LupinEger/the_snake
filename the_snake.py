@@ -83,8 +83,10 @@ class Snake(GameObject):
 
     def __init__(self):
         """Инициализирует начальное состояние змейки."""
-        start_pos = (WIDTH // 2 // CELL_SIZE * CELL_SIZE,
-                     HEIGHT // 2 // CELL_SIZE * CELL_SIZE)
+        start_pos = (
+            WIDTH // 2 // CELL_SIZE * CELL_SIZE,
+            HEIGHT // 2 // CELL_SIZE * CELL_SIZE,
+        )
         super().__init__(start_pos, GREEN)
         self.length = 1
         self.positions = [start_pos]
@@ -102,13 +104,15 @@ class Snake(GameObject):
         """Обновляет позицию змейки, добавляя новую голову."""
         head_x, head_y = self.get_head_position()
         dx, dy = self.direction
-        new_head = (head_x + dx * CELL_SIZE, head_y + dy * CELL_SIZE)
+        new_head = (
+            head_x + dx * CELL_SIZE,
+            head_y + dy * CELL_SIZE,
+        )
 
         new_head = (new_head[0] % WIDTH, new_head[1] % HEIGHT)
 
         self.positions.insert(0, new_head)
 
-        # Если длина змейки больше, чем нужно — удаляем хвост
         if len(self.positions) > self.length:
             self.last = self.positions.pop()
         else:
@@ -116,11 +120,9 @@ class Snake(GameObject):
 
     def draw(self, surface):
         """Отрисовывает все сегменты змейки на экране."""
-        # Перебираем все позиции и рисуем каждую зеленым цветом
         for position in self.positions:
             self.draw_cell(surface, position, self.body_color)
 
-        # Затираем последний сегмент, если он был удален в этом кадре
         if self.last:
             self.draw_cell(surface, self.last, BLACK)
 
@@ -129,9 +131,11 @@ class Snake(GameObject):
         return self.positions[0]
 
     def reset(self):
-        """Сбрасывает змейку в начальное состояние после столкновения с собой."""
-        start_pos = (WIDTH // 2 // CELL_SIZE * CELL_SIZE,
-                     HEIGHT // 2 // CELL_SIZE * CELL_SIZE)
+        """Сбрасывает змейку в начальное состояние."""
+        start_pos = (
+            WIDTH // 2 // CELL_SIZE * CELL_SIZE,
+            HEIGHT // 2 // CELL_SIZE * CELL_SIZE,
+        )
         self.length = 1
         self.positions = [start_pos]
         self.direction = RIGHT
@@ -144,7 +148,7 @@ class Snake(GameObject):
 
 
 def handle_keys(snake):
-    """Обрабатывает нажатия клавиш для изменения направления движения змейки."""
+    """Обрабатывает нажатия клавиш для смены направления."""
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -154,7 +158,9 @@ def handle_keys(snake):
                 pygame.quit()
                 raise SystemExit
 
-            new_direction = DIRECTION_MAP.get((event.key, snake.direction))
+            new_direction = DIRECTION_MAP.get(
+                (event.key, snake.direction)
+            )
             if new_direction:
                 snake.next_direction = new_direction
 
@@ -178,19 +184,19 @@ def main():
 
         head_position = snake.get_head_position()
 
-        # Проверка столкновения с собой
         if head_position in snake.positions[1:]:
             snake.reset()
             apples = [Apple(set(snake.positions)) for _ in range(3)]
             screen.fill(BLACK)
             continue
 
-        # Проверка поедания яблока
         for apple in apples[:]:
             if head_position == apple.position:
                 snake.grow()
                 apples.remove(apple)
-                occupied = set(snake.positions) | {a.position for a in apples}
+                occupied = set(snake.positions) | {
+                    a.position for a in apples
+                }
                 apples.append(Apple(occupied))
                 if snake.length > record_length:
                     record_length = snake.length
@@ -200,9 +206,9 @@ def main():
             apple.draw(screen)
         snake.draw(screen)
 
-        pygame.display.set_caption(f'Изгиб Питона | Рекорд: {record_length}')
+        title = f'Изгиб Питона | Рекорд: {record_length}'
+        pygame.display.set_caption(title)
         pygame.display.update()
-        # Снижаем скорость: было 8, стало 5 (чем меньше число, тем медленнее)
         clock.tick(5)
 
 
