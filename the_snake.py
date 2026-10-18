@@ -2,47 +2,30 @@ import random
 
 import pygame
 
-CELL_SIZE = 20
-CELLS_X = 32
-CELLS_Y = 24
-WIDTH = CELL_SIZE * CELLS_X
-HEIGHT = CELL_SIZE * CELLS_Y
+# Константы с точными именами, которые требует тест
+SCREEN_WIDTH = 640
+SCREEN_HEIGHT = 480
+GRID_SIZE = 20
+GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
+GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
+BOARD_BACKGROUND_COLOR = (0, 0, 0)
 
-BLACK = (0, 0, 0)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
-
-LEFT = (-1, 0)
-RIGHT = (1, 0)
 UP = (0, -1)
 DOWN = (0, 1)
+LEFT = (-1, 0)
+RIGHT = (1, 0)
 
-DIRECTION_MAP = {
-    (pygame.K_LEFT, RIGHT): RIGHT,
-    (pygame.K_RIGHT, LEFT): LEFT,
-    (pygame.K_UP, DOWN): DOWN,
-    (pygame.K_DOWN, UP): UP,
-    (pygame.K_LEFT, UP): LEFT,
-    (pygame.K_LEFT, DOWN): LEFT,
-    (pygame.K_RIGHT, UP): RIGHT,
-    (pygame.K_RIGHT, DOWN): RIGHT,
-    (pygame.K_UP, LEFT): UP,
-    (pygame.K_UP, RIGHT): UP,
-    (pygame.K_DOWN, LEFT): DOWN,
-    (pygame.K_DOWN, RIGHT): DOWN,
-}
-
-ALL_CELLS = {
-    (x * CELL_SIZE, y * CELL_SIZE)
-    for x in range(CELLS_X)
-    for y in range(CELLS_Y)
-}
+# Глобальные переменные (тест требует их наличия на уровне модуля)
+pygame.init()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+clock = pygame.time.Clock()
 
 
 class GameObject:
     """Базовый класс для игровых объектов."""
 
-    def __init__(self, position, body_color):
+    # Добавляем значения по умолчанию, чтобы тест мог вызвать GameObject()
+    def __init__(self, position=None, body_color=None):
         """Инициализирует позицию и цвет объекта."""
         self.position = position
         self.body_color = body_color
@@ -53,25 +36,35 @@ class GameObject:
 
     def draw_cell(self, surface, position, color):
         """Отрисовывает одну ячейку по указанным координатам и цвету."""
-        rect = pygame.Rect(position[0], position[1], CELL_SIZE, CELL_SIZE)
+        rect = pygame.Rect(position[0], position[1], GRID_SIZE, GRID_SIZE)
         pygame.draw.rect(surface, color, rect)
 
 
 class Apple(GameObject):
     """Класс, описывающий яблоко."""
 
-    def __init__(self, occupied_cells):
+    # Добавляем значение по умолчанию для occupied_cells
+    def __init__(self, occupied_cells=None):
         """Задаёт цвет яблока и устанавливает начальную позицию."""
-        super().__init__(None, RED)
+        super().__init__(None, (255, 0, 0))
         self.randomize_position(occupied_cells)
 
-    def randomize_position(self, occupied_cells):
+    def randomize_position(self, occupied_cells=None):
         """Устанавливает случайное положение яблока на игровом поле."""
-        free_cells = list(ALL_CELLS - occupied_cells)
+        if occupied_cells is None:
+            occupied_cells = set()
+
+        all_cells = {
+            (x * GRID_SIZE, y * GRID_SIZE)
+            for x in range(GRID_WIDTH)
+            for y in range(GRID_HEIGHT)
+        }
+        free_cells = list(all_cells - occupied_cells)
+
         if free_cells:
             self.position = random.choice(free_cells)
         else:
-            self.position = random.choice(list(ALL_CELLS))
+            self.position = random.choice(list(all_cells))
 
     def draw(self, surface):
         """Отрисовывает яблоко на игровой поверхности."""
@@ -84,10 +77,10 @@ class Snake(GameObject):
     def __init__(self):
         """Инициализирует начальное состояние змейки."""
         start_pos = (
-            WIDTH // 2 // CELL_SIZE * CELL_SIZE,
-            HEIGHT // 2 // CELL_SIZE * CELL_SIZE,
+            SCREEN_WIDTH // 2 // GRID_SIZE * GRID_SIZE,
+            SCREEN_HEIGHT // 2 // GRID_SIZE * GRID_SIZE,
         )
-        super().__init__(start_pos, GREEN)
+        super().__init__(start_pos, (0, 255, 0))
         self.length = 1
         self.positions = [start_pos]
         self.direction = RIGHT
@@ -105,11 +98,12 @@ class Snake(GameObject):
         head_x, head_y = self.get_head_position()
         dx, dy = self.direction
         new_head = (
-            head_x + dx * CELL_SIZE,
-            head_y + dy * CELL_SIZE,
+            head_x + dx * GRID_SIZE,
+            head_y + dy * GRID_SIZE,
         )
 
-        new_head = (new_head[0] % WIDTH, new_head[1] % HEIGHT)
+        # Телепортация сквозь стены
+        new_head = (new_head[0] % SCREEN_WIDTH, new_head[1] % SCREEN_HEIGHT)
 
         self.positions.insert(0, new_head)
 
@@ -124,7 +118,7 @@ class Snake(GameObject):
             self.draw_cell(surface, position, self.body_color)
 
         if self.last:
-            self.draw_cell(surface, self.last, BLACK)
+            self.draw_cell(surface, self.last, BOARD_BACKGROUND_COLOR)
 
     def get_head_position(self):
         """Возвращает позицию головы змейки."""
@@ -133,8 +127,8 @@ class Snake(GameObject):
     def reset(self):
         """Сбрасывает змейку в начальное состояние."""
         start_pos = (
-            WIDTH // 2 // CELL_SIZE * CELL_SIZE,
-            HEIGHT // 2 // CELL_SIZE * CELL_SIZE,
+            SCREEN_WIDTH // 2 // GRID_SIZE * GRID_SIZE,
+            SCREEN_HEIGHT // 2 // GRID_SIZE * GRID_SIZE,
         )
         self.length = 1
         self.positions = [start_pos]
@@ -158,23 +152,24 @@ def handle_keys(snake):
                 pygame.quit()
                 raise SystemExit
 
-            new_direction = DIRECTION_MAP.get(
-                (event.key, snake.direction)
-            )
-            if new_direction:
-                snake.next_direction = new_direction
+            if event.key == pygame.K_LEFT and snake.direction != RIGHT:
+                snake.next_direction = LEFT
+            elif event.key == pygame.K_RIGHT and snake.direction != LEFT:
+                snake.next_direction = RIGHT
+            elif event.key == pygame.K_UP and snake.direction != DOWN:
+                snake.next_direction = UP
+            elif event.key == pygame.K_DOWN and snake.direction != UP:
+                snake.next_direction = DOWN
 
 
 def main():
     """Основной игровой цикл."""
-    pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption('Изгиб Питона')
-    clock = pygame.time.Clock()
 
     record_length = 1
 
     snake = Snake()
+    # Создаем несколько яблок (как вы просили в начале)
     apples = [Apple(set(snake.positions)) for _ in range(3)]
 
     while True:
@@ -187,21 +182,19 @@ def main():
         if head_position in snake.positions[1:]:
             snake.reset()
             apples = [Apple(set(snake.positions)) for _ in range(3)]
-            screen.fill(BLACK)
+            screen.fill(BOARD_BACKGROUND_COLOR)
             continue
 
         for apple in apples[:]:
             if head_position == apple.position:
                 snake.grow()
                 apples.remove(apple)
-                occupied = set(snake.positions) | {
-                    a.position for a in apples
-                }
+                occupied = set(snake.positions) | {a.position for a in apples}
                 apples.append(Apple(occupied))
                 if snake.length > record_length:
                     record_length = snake.length
 
-        screen.fill(BLACK)
+        screen.fill(BOARD_BACKGROUND_COLOR)
         for apple in apples:
             apple.draw(screen)
         snake.draw(screen)
